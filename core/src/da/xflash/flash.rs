@@ -4,6 +4,7 @@
 */
 use log::{debug, error, info};
 
+use crate::core::storage::PartitionKind;
 use crate::da::DAProtocol;
 use crate::da::xflash::XFlash;
 use crate::da::xflash::cmds::*;
@@ -13,12 +14,15 @@ pub async fn read_flash<F>(
     xflash: &mut XFlash,
     addr: u64,
     size: usize,
+    section: PartitionKind,
     mut progress: F,
 ) -> Result<Vec<u8>>
 where
     F: FnMut(usize, usize),
 {
     info!("Reading flash at address {:#X} with size {:#X}", addr, size);
+
+    let storage_type = xflash.get_storage_type().await as u32;
 
     // Format:
     // Storage Type (EMMC, UFS, NAND) u32
@@ -33,8 +37,7 @@ where
     // 4400000000000000 u64
     // 0000000000000000000000000000000000000000000000000000000000000000 8u32
     // The payload above is sent when reading PGPT (addr: 0x0, size: 0x44)
-    let storage_type = 1u32; // TODO: Add support for other storage types
-    let partition_type = 8u32; // USER partition
+    let partition_type = section.as_u32();
     let nand_ext = [0u32; 8]; // Nand specific, set to 0 for non-nand storage types
 
     let mut param = Vec::new();
@@ -110,6 +113,7 @@ pub async fn write_flash<F>(
     addr: u64,
     size: usize,
     data: &[u8],
+    section: PartitionKind,
     mut progress: F,
 ) -> Result<()>
 where
@@ -141,7 +145,7 @@ where
     }
 
     let storage_type = 1u32; // TODO: Add support for other storage types
-    let partition_type = 8u32;
+    let partition_type = section.as_u32();
     let nand_ext = [0u32; 8];
     let mut param = Vec::new();
     param.extend_from_slice(&storage_type.to_le_bytes());

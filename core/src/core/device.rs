@@ -12,18 +12,18 @@ use crate::connection::port::{ConnectionType, MTKPort};
 use crate::core::crypto::config::{CryptoConfig, CryptoIO};
 use crate::core::crypto::sej::SEJCrypto;
 use crate::core::seccfg::{LockFlag, SecCfgV4};
-use crate::core::storage::{Partition, StorageType, parse_gpt};
+use crate::core::storage::{EmmcPartition, Partition, PartitionKind, Storage, parse_gpt};
 use crate::da::{DAFile, DAProtocol, DAType, XFlash};
 use crate::error::{Error, Result};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct DeviceInfo {
     pub chipset: String,
     pub soc_id: Vec<u8>,
     pub meid: Vec<u8>,
     pub hw_code: u16,
-    pub storage: StorageType,
     pub partitions: Vec<Partition>,
+    pub storage: Option<Arc<dyn Storage + Send + Sync>>,
 }
 
 pub struct Device<'a> {
@@ -76,7 +76,7 @@ impl<'a> Device<'a> {
             meid,
             hw_code,
             chipset: String::from("Unknown"),
-            storage: StorageType::Unknown,
+            storage: None,
             partitions: vec![],
         }));
 
@@ -138,15 +138,21 @@ impl<'a> Device<'a> {
         }
         protocol.set_connection_type(ConnectionType::Da)?;
 
+        let storage_type = protocol.get_storage_type().await;
+        let storage = protocol.get_storage().await;
+        let user_section = match &storage {
+            Some(s) => s.get_user_part(),
+            None => return Err(Error::penumbra("Storage information not available!")),
+        };
+
         // We don't care about progress here ;D
         let mut progress = |_read: usize, _total: usize| {};
-        let pgpt_data = protocol.read_flash(0x0, 0x8000, &mut progress).await?;
-        let partitions = parse_gpt(&pgpt_data, StorageType::Emmc)?;
+        let pgpt_data = protocol.read_flash(0x0, 0x8000, user_section, &mut progress).await?;
+        let partitions = parse_gpt(&pgpt_data, storage_type)?;
 
         if let Some(dev_info_rc) = &self.dev_info {
             let mut dev_info = dev_info_rc.lock().await;
             dev_info.partitions = partitions;
-            dev_info.storage = StorageType::Emmc; // Assuming eMMC for now
         }
 
         Ok(())
@@ -155,6 +161,7 @@ impl<'a> Device<'a> {
     pub async fn read_partition(
         &mut self,
         name: &str,
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<Vec<u8>> {
         if self.protocol.is_none() {
@@ -181,13 +188,14 @@ impl<'a> Device<'a> {
         };
 
         let protocol = self.protocol.as_mut().unwrap();
-        protocol.read_flash(partition.address, partition.size, progress).await
+        protocol.read_flash(partition.address, partition.size, section, progress).await
     }
 
     pub async fn write_partition(
         &mut self,
         name: &str,
         data: &[u8],
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<()> {
         if self.protocol.is_none() {
@@ -222,7 +230,7 @@ impl<'a> Device<'a> {
         }
 
         let protocol = self.protocol.as_mut().unwrap();
-        protocol.write_flash(partition.address, data.len(), data, progress).await
+        protocol.write_flash(partition.address, data.len(), data, section, progress).await
     }
 
     pub fn get_connection(&mut self) -> Result<&mut Connection> {
@@ -240,7 +248,12 @@ impl<'a> Device<'a> {
     }
 
     pub async fn set_seccfg_lock_state(&mut self, lock_state: LockFlag) -> Option<Vec<u8>> {
-        self.protocol.as_ref()?;
+        let section = {
+            let dev_info_rc = self.dev_info.as_ref()?.clone();
+            let dev_info = dev_info_rc.lock().await;
+            let storage = dev_info.storage.as_ref()?;
+            storage.get_user_part().clone()
+        };
 
         let conn = self.get_connection().ok()?;
         if conn.connection_type != ConnectionType::Da {
@@ -251,7 +264,7 @@ impl<'a> Device<'a> {
         let mut progress = |_read: usize, _total: usize| {};
 
         let sej_base = 0x1000A000; // TODO: Dynamically determine SEJ base (maybe through preloader)
-        let seccfg_raw = self.read_partition("seccfg", &mut progress).await.ok()?;
+        let seccfg_raw = self.read_partition("seccfg", section, &mut progress).await.ok()?;
 
         let new_seccfg = {
             let mut crypto_config = CryptoConfig::new(sej_base, self);
@@ -261,7 +274,7 @@ impl<'a> Device<'a> {
             seccfg.create(&mut sej, lock_state).await
         };
 
-        self.write_partition("seccfg", &new_seccfg, &mut progress).await.ok()?;
+        self.write_partition("seccfg", &new_seccfg, section, &mut progress).await.ok()?;
         Some(new_seccfg)
     }
 }

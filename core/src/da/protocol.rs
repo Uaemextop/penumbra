@@ -2,8 +2,11 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025 Shomy
 */
+use std::sync::Arc;
+
 use crate::connection::Connection;
 use crate::connection::port::ConnectionType;
+use crate::core::storage::{PartitionKind, Storage, StorageType};
 use crate::error::Result;
 
 #[async_trait::async_trait]
@@ -20,6 +23,7 @@ pub trait DAProtocol: Send {
         &mut self,
         addr: u64,
         size: usize,
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<Vec<u8>>;
 
@@ -28,6 +32,7 @@ pub trait DAProtocol: Send {
         addr: u64,
         size: usize,
         data: &[u8],
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<()>;
 
@@ -43,4 +48,7 @@ pub trait DAProtocol: Send {
     // Connection
     fn get_connection(&mut self) -> &mut Connection;
     fn set_connection_type(&mut self, conn_type: ConnectionType) -> Result<()>;
+
+    async fn get_storage(&mut self) -> Option<Arc<dyn Storage>>;
+    async fn get_storage_type(&mut self) -> StorageType;
 }

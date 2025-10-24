@@ -2,70 +2,9 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025 Shomy
 */
+use crate::core::storage::{EmmcPartition, Partition, PartitionKind, StorageType, UfsPartition};
 use crate::error::{Error, Result};
 
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageType {
-    Unknown = 0, // How do you even-
-    Emmc = 0x1,
-    Ufs = 0x30,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EmmcPartition {
-    Boot1 = 1,
-    Boot2 = 2,
-    Rpmb = 3,
-    Gp1 = 4,
-    Gp2 = 5,
-    Gp3 = 6,
-    Gp4 = 7,
-    User = 8,
-    End = 9,
-    Boot1Boot2 = 10,
-}
-
-#[repr(u32)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UfsPartition {
-    Lu0 = 0,
-    Lu1 = 1,
-    Lu2 = 2,
-    Lu3 = 3,
-    Lu4 = 4,
-    Lu5 = 5,
-    Lu6 = 6,
-    Lu7 = 7,
-    Lu8 = 8,
-}
-
-#[derive(Debug, Clone)]
-pub enum PartitionKind {
-    Emmc(EmmcPartition),
-    Ufs(UfsPartition),
-    Unknown,
-}
-
-#[derive(Debug, Clone)]
-pub struct Partition {
-    pub name: String,
-    pub size: usize,
-    pub address: u64,
-    pub kind: PartitionKind,
-}
-
-impl Partition {
-    pub fn new(name: &str, size: usize, address: u64, kind: PartitionKind) -> Self {
-        Self { name: name.to_string(), size, address, kind }
-    }
-}
-
-// Oh dear Mediatek! Why make me lose 2 hours over this!
-// Why in the scatter file you have reserved partitions prefixed with 0xFFFF,
-// but then I can just dump them with non reserved addresses? <3
-// Over such a simple task, I lost too much time ._.
 pub fn parse_gpt(data: &[u8], storage_type: StorageType) -> Result<Vec<Partition>> {
     let mut sector_size: Option<usize> = None;
 

@@ -5,15 +5,18 @@
 mod cmds;
 mod exts;
 pub mod flash;
+mod storage;
 use std::sync::Arc;
 
 use log::{debug, error, info, warn};
+use storage::detect_storage;
 use tokio::sync::Mutex;
 use tokio::time::{Duration, timeout};
 
 use crate::connection::Connection;
 use crate::connection::port::ConnectionType;
 use crate::core::device::DeviceInfo;
+use crate::core::storage::{PartitionKind, StorageType};
 use crate::da::xflash::cmds::*;
 use crate::da::xflash::exts::{boot_extensions, read32_ext, write32_ext};
 use crate::da::{DA, DAProtocol};
@@ -243,9 +246,10 @@ impl DAProtocol for XFlash {
         &mut self,
         addr: u64,
         size: usize,
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<Vec<u8>> {
-        flash::read_flash(self, addr, size, progress).await
+        flash::read_flash(self, addr, size, section, progress).await
     }
 
     async fn write_flash(
@@ -253,9 +257,10 @@ impl DAProtocol for XFlash {
         addr: u64,
         size: usize,
         data: &[u8],
+        section: PartitionKind,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<()> {
-        flash::write_flash(self, addr, size, data, progress).await
+        flash::write_flash(self, addr, size, data, section, progress).await
     }
 
     async fn download(&mut self, part_name: String, data: &[u8]) -> Result<()> {
@@ -306,6 +311,46 @@ impl DAProtocol for XFlash {
         debug!("[TX] Writing 32-bit value 0x{:08X} to address 0x{:08X}", value, addr);
         self.devctrl(Cmd::SetRegisterValue, Some(&param)).await?;
         Ok(())
+    }
+
+    async fn get_storage_type(&mut self) -> StorageType {
+        if let Ok(dev_info) = self.dev_info.try_lock() {
+            if let Some(storage) = &dev_info.storage {
+                return storage.kind();
+            }
+        }
+
+        let detected = detect_storage(self).await;
+
+        if let Some(storage) = detected {
+            let kind = storage.as_ref().kind();
+            if let Ok(mut dev_info) = self.dev_info.try_lock() {
+                dev_info.storage = Some(storage);
+            }
+            return kind;
+        }
+
+        StorageType::Unknown
+    }
+
+    async fn get_storage(&mut self) -> Option<Arc<dyn crate::core::storage::Storage>> {
+        {
+            let dev_info = self.dev_info.lock().await;
+            if let Some(storage) = &dev_info.storage {
+                return Some(storage.clone());
+            }
+        }
+
+        let detected = detect_storage(self).await;
+
+        if let Some(storage) = detected {
+            let mut dev_info = self.dev_info.lock().await;
+            dev_info.storage = Some(storage.clone());
+
+            return Some(storage);
+        }
+
+        None
     }
 }
 
