@@ -22,19 +22,22 @@ pub struct UfsInfo {
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UfsPartition {
+    /// Fallback case, should not be used
+    Unknown = 0,
     /// Logical Unit 0, usually preloader
-    Lu0 = 0,
+    Lu0 = 1,
     /// Logical Unit 1, usually preloader backup
-    Lu1 = 1,
+    Lu1 = 2,
     /// Logical Unit 2, same as USER from EMMC
-    Lu2 = 2,
-    Lu3 = 3,
-    Lu4 = 4,
-    Lu5 = 5,
-    Lu6 = 6,
-    Lu7 = 7,
+    Lu2 = 3,
+    /// Logical Unit 3, RPMB
+    Lu3 = 4,
+    Lu4 = 5,
+    Lu5 = 6,
+    Lu6 = 7,
+    Lu7 = 8,
     /// Both Logical Unit 0 and Logical Unit 1
-    Lu0Lu1 = 8,
+    Lu0Lu1 = 9,
 }
 
 pub struct UfsStorage {
@@ -74,16 +77,25 @@ impl UfsStorage {
             return Err(Error::io("UFS response data too short"));
         }
 
-        // 0x30 == UFS
-        let kind = u32::from_le_bytes(data[0x00..0x04].try_into().unwrap());
-        let block_size = u32::from_le_bytes(data[0x04..0x08].try_into().unwrap());
-        let lu0_size = u64::from_le_bytes(data[0x08..0x10].try_into().unwrap());
-        let lu1_size = u64::from_le_bytes(data[0x10..0x18].try_into().unwrap());
-        let lu2_size = u64::from_le_bytes(data[0x18..0x20].try_into().unwrap());
+        let mut pos = 0;
 
-        let cid = data[0x20..0x30].to_vec();
-        let fwver = data[0x36..0x3A].to_vec();
-        let serial = data[0x3E..0x4A].to_vec();
+        // 0x30 == UFS
+        let kind = u32::from_le_bytes(data[pos..pos + 4].try_into().unwrap());
+        let block_size = u32::from_le_bytes(data[pos + 4..pos + 8].try_into().unwrap());
+        pos += 8;
+
+        let lu0_size = u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap());
+        pos += 8;
+        let lu1_size = u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap());
+        pos += 8;
+        let lu2_size = u64::from_le_bytes(data[pos..pos + 8].try_into().unwrap());
+        pos += 8;
+
+        let cid = data[pos..pos + 16].to_vec();
+        pos += 16;
+
+        let fwver = data[pos + 0x16..pos + 0x1A].to_vec();
+        let serial = data[pos + 0x1E..pos + 0x2A].to_vec();
 
         Ok(UfsStorage {
             info: UfsInfo { kind, block_size, lu0_size, lu1_size, lu2_size, cid, fwver, serial },
