@@ -77,13 +77,13 @@ impl UfsStorage {
         // 0x30 == UFS
         let kind = u32::from_le_bytes(data[0x00..0x04].try_into().unwrap());
         let block_size = u32::from_le_bytes(data[0x04..0x08].try_into().unwrap());
-        let lu0_size = u64::from_le_bytes(data[0x08..0x16].try_into().unwrap());
-        let lu1_size = u64::from_le_bytes(data[0x16..0x24].try_into().unwrap());
-        let lu2_size = u64::from_le_bytes(data[0x24..0x32].try_into().unwrap());
+        let lu0_size = u64::from_le_bytes(data[0x08..0x10].try_into().unwrap());
+        let lu1_size = u64::from_le_bytes(data[0x10..0x18].try_into().unwrap());
+        let lu2_size = u64::from_le_bytes(data[0x18..0x20].try_into().unwrap());
 
-        let cid = data[0x32..0x42].to_vec();
-        let fwver = data[0x42..0x62].to_vec();
-        let serial = data[0x62..0x82].to_vec();
+        let cid = data[0x20..0x30].to_vec();
+        let fwver = data[0x36..0x3A].to_vec();
+        let serial = data[0x3E..0x4A].to_vec();
 
         Ok(UfsStorage {
             info: UfsInfo { kind, block_size, lu0_size, lu1_size, lu2_size, cid, fwver, serial },
