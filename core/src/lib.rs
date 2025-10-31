@@ -5,10 +5,10 @@
 pub mod connection;
 pub mod core;
 pub mod da;
+pub mod device;
 pub mod error;
 pub mod exploit;
 pub mod utilities;
 
-pub use core::device::Device;
-
 pub use connection::port::{MTKPort, find_mtk_port};
+pub use device::{Device, DeviceBuilder};
