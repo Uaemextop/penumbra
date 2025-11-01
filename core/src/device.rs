@@ -71,7 +71,7 @@ impl DeviceBuilder {
 
         Ok(Device {
             dev_info: DeviceInfo::new(),
-            connection: None,
+            connection,
             protocol: None,
             connected: false,
             da_data: self.da_data,
