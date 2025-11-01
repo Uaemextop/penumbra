@@ -440,27 +440,28 @@ impl Device {
 #[async_trait::async_trait]
 impl CryptoIO for Device {
     async fn read32(&mut self, addr: u32) -> u32 {
-        if let Some(protocol) = &mut self.protocol {
-            match protocol.read32(addr).await {
-                Ok(val) => val,
-                Err(e) => {
-                    error!("Failed to read32 from protocol at 0x{:08X}: {}", addr, e);
-                    0
-                }
-            }
-        } else {
+        let Some(protocol) = self.get_protocol() else {
             error!("No protocol available for read32 at 0x{:08X}!", addr);
-            0
+            return 0;
+        };
+
+        match protocol.read32(addr).await {
+            Ok(val) => val,
+            Err(e) => {
+                error!("Failed to read32 from protocol at 0x{:08X}: {}", addr, e);
+                0
+            }
         }
     }
 
     async fn write32(&mut self, addr: u32, val: u32) {
-        if let Some(protocol) = &mut self.protocol {
-            if let Err(e) = protocol.write32(addr, val).await {
-                error!("Failed to write32 to protocol at 0x{:08X}: {}", addr, e);
-            }
-        } else {
+        let Some(protocol) = self.get_protocol() else {
             error!("No protocol available for write32 at 0x{:08X}!", addr);
+            return;
+        };
+
+        if let Err(e) = protocol.write32(addr, val).await {
+            error!("Failed to write32 to protocol at 0x{:08X}: {}", addr, e);
         }
     }
 }
