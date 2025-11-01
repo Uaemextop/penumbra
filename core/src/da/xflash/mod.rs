@@ -314,30 +314,11 @@ impl DAProtocol for XFlash {
     }
 
     async fn get_storage_type(&mut self) -> StorageType {
-        if let Some(storage) = self.dev_info.storage().await {
-            return storage.kind();
-        }
-
-        if let Some(storage) = detect_storage(self).await {
-            let kind = storage.as_ref().kind();
-            self.dev_info.set_storage(storage).await;
-            return kind;
-        }
-
-        StorageType::Unknown
+        self.get_or_detect_storage().await.map_or(StorageType::Unknown, |s| s.kind())
     }
 
     async fn get_storage(&mut self) -> Option<Arc<dyn Storage>> {
-        if let Some(storage) = self.dev_info.storage().await {
-            return Some(storage);
-        }
-
-        if let Some(storage) = detect_storage(self).await {
-            self.dev_info.set_storage(storage.clone()).await;
-            return Some(storage);
-        }
-
-        None
+        self.get_or_detect_storage().await
     }
 }
 
@@ -484,5 +465,19 @@ impl XFlash {
         info!("Booting DA extensions...");
         self.using_exts = boot_extensions(self).await?;
         Ok(true)
+    }
+
+    // This is an internal helper, do not use it directly
+    async fn get_or_detect_storage(&mut self) -> Option<Arc<dyn Storage>> {
+        if let Some(storage) = self.dev_info.storage().await {
+            return Some(storage);
+        }
+
+        if let Some(storage) = detect_storage(self).await {
+            self.dev_info.set_storage(storage.clone()).await;
+            return Some(storage);
+        }
+
+        None
     }
 }
