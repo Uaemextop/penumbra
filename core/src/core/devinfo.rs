@@ -2,23 +2,24 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025 Shomy
 */
-use std::sync::Arc;
+use std::sync::{Arc, RwLock as SyncRwLock};
 
 use tokio::sync::RwLock;
 
+use crate::core::chip::{ChipInfo, UNKNOWN_CHIP};
 use crate::core::storage::{Partition, Storage};
 
 /// Safe wrapper around device information with async read/write access.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DeviceInfo {
     inner: Arc<RwLock<DevInfoData>>,
+    chip: Arc<SyncRwLock<&'static ChipInfo>>,
 }
 
 /// Struct holding device information data.
 /// This should not be accessed directly, instead use the `DeviceInfo` wrapper.
 #[derive(Clone, Default)]
 pub struct DevInfoData {
-    pub chipset: String,
     pub soc_id: Vec<u8>,
     pub meid: Vec<u8>,
     pub hw_code: u16,
@@ -29,7 +30,7 @@ pub struct DevInfoData {
 
 impl DeviceInfo {
     pub fn new() -> Self {
-        DeviceInfo { inner: Arc::new(RwLock::new(DevInfoData::default())) }
+        Self::default()
     }
 
     fn inner(&self) -> &Arc<RwLock<DevInfoData>> {
@@ -45,10 +46,27 @@ impl DeviceInfo {
         *write_guard = data;
     }
 
-    pub async fn chipset(&self) -> String {
-        self.inner().read().await.chipset.clone()
+    pub fn chip(&self) -> &'static ChipInfo {
+        *self.chip.read().unwrap()
     }
 
+    pub fn set_chip(&self, chip: &'static ChipInfo) {
+        // It's okay to unwrap here. If there's an error,
+        // it means something went very wrong to begin with :D!
+        *self.chip.write().unwrap() = chip;
+    }
+}
+
+impl Default for DeviceInfo {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(DevInfoData::default())),
+            chip: Arc::new(SyncRwLock::new(&UNKNOWN_CHIP)),
+        }
+    }
+}
+
+impl DeviceInfo {
     pub async fn soc_id(&self) -> Vec<u8> {
         self.inner().read().await.soc_id.clone()
     }

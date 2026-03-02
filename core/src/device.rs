@@ -4,12 +4,13 @@
 */
 use std::time::Duration;
 
-use log::{error, info};
+use log::{error, info, warn};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::timeout;
 
 use crate::connection::Connection;
 use crate::connection::port::{ConnectionType, MTKPort};
+use crate::core::chip::{ChipInfo, chip_from_hw_code};
 use crate::core::crypto::config::CryptoIO;
 use crate::core::devinfo::{DevInfoData, DeviceInfo};
 use crate::core::seccfg::LockFlag;
@@ -151,17 +152,17 @@ impl Device {
         let hw_code = conn.get_hw_code().await?;
         let target_config = conn.get_target_config().await?;
 
-        let device_info = DevInfoData {
-            soc_id,
-            meid,
-            hw_code,
-            chipset: String::from("Unknown"),
-            storage: None,
-            partitions: vec![],
-            target_config,
-        };
+        let device_info =
+            DevInfoData { soc_id, meid, hw_code, storage: None, partitions: vec![], target_config };
 
         self.dev_info.set_data(device_info).await;
+        let chip = chip_from_hw_code(hw_code);
+        if chip.hw_code() == 0x0000 {
+            warn!("Unknown hardware code 0x{:04X}. Device might not work as expected.", hw_code);
+            warn!("If you think this is incorrect, please report this hw code to the developers.");
+        }
+
+        self.dev_info.set_chip(chip);
 
         if self.da_data.is_some() {
             self.protocol = Some(self.init_da_protocol(conn).await?);
@@ -183,6 +184,7 @@ impl Device {
             .ok_or_else(|| Error::penumbra("Connection is not initialized."))?;
 
         self.dev_info.set_data(dev_info).await;
+        self.dev_info.set_chip(chip_from_hw_code(self.dev_info.hw_code().await));
 
         match conn.connection_type {
             ConnectionType::Preloader | ConnectionType::Brom => {
@@ -292,6 +294,11 @@ impl Device {
 
         self.get_partitions().await;
         Ok(protocol)
+    }
+
+    /// Returns the resolved [`ChipInfo`] for this device.
+    pub fn chip(&self) -> &'static ChipInfo {
+        self.dev_info.chip()
     }
 
     /// Gets a mutable reference to the active connection.

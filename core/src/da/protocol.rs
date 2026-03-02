@@ -9,6 +9,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::connection::Connection;
 use crate::connection::port::ConnectionType;
+use crate::core::chip::ChipInfo;
 use crate::core::devinfo::DeviceInfo;
 use crate::core::seccfg::LockFlag;
 use crate::core::storage::{Partition, PartitionKind, Storage, StorageType};
@@ -112,6 +113,10 @@ pub trait DAProtocol: DowncastSend {
     // DevInfo helpers
     fn get_devinfo(&self) -> &DeviceInfo;
     fn get_da(&self) -> &DA;
+
+    fn chip(&self) -> &'static ChipInfo {
+        self.get_devinfo().chip()
+    }
 
     /* EXTENSIONS / EXPLOITS
      * These functions won't be included if the "no_exploits" feature is enabled

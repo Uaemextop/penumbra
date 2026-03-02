@@ -3,6 +3,7 @@
     SPDX-FileCopyrightText: 2025 Shomy
 */
 pub mod auth;
+pub mod chip;
 pub mod crypto;
 pub mod devinfo;
 pub mod emi;
