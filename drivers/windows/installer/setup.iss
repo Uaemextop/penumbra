@@ -5,7 +5,7 @@
 ; ============================================================================
 
 #define AppName "MTK Preloader USB Serial Driver"
-#define AppVersion "1.0.0"
+#define AppVersion "2.0.0"
 #define AppPublisher "MTK Loader Drivers Opensource"
 #define AppURL "https://github.com/Uaemextop/mtk-loader-drivers-opensource-win11"
 
