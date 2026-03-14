@@ -7,7 +7,10 @@ use std::fmt;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
+
+#[cfg(windows)]
+use log::warn;
 use nusb::descriptors::TransferType;
 use nusb::io::{EndpointRead, EndpointWrite};
 use nusb::transfer::{Bulk, ControlIn, ControlOut, ControlType, Direction, In, Out, Recipient};
@@ -205,7 +208,11 @@ impl MTKPort for UsbMTKPort {
             let mut result = None;
             for attempt in 0..IFACE_CLAIM_RETRIES {
                 if attempt > 0 {
-                    debug!("Retrying interface claim (attempt {}/{})", attempt + 1, IFACE_CLAIM_RETRIES);
+                    debug!(
+                        "Retrying interface claim (attempt {}/{})",
+                        attempt + 1,
+                        IFACE_CLAIM_RETRIES
+                    );
                     tokio::time::sleep(IFACE_CLAIM_RETRY_DELAY).await;
                 }
                 match device.detach_and_claim_interface(0).await {
@@ -215,7 +222,11 @@ impl MTKPort for UsbMTKPort {
                             break;
                         }
                         Err(e) => {
-                            warn!("Failed to claim data interface (attempt {}): {}", attempt + 1, e);
+                            warn!(
+                                "Failed to claim data interface (attempt {}): {}",
+                                attempt + 1,
+                                e
+                            );
                             last_err = Some(e);
                         }
                     },
