@@ -7,7 +7,10 @@ use std::fmt;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use log::debug;
+use log::{debug, error, info};
+
+#[cfg(windows)]
+use log::warn;
 use nusb::descriptors::TransferType;
 use nusb::io::{EndpointRead, EndpointWrite};
 use nusb::transfer::{Bulk, ControlIn, ControlOut, ControlType, Direction, In, Out, Recipient};
@@ -19,9 +22,21 @@ use crate::connection::ConnectionType;
 use crate::connection::port::KNOWN_PORTS;
 use crate::error::{Error, Result};
 
+/// USB operation timeout — longer on Windows to accommodate WinUSB driver latency
+#[cfg(windows)]
+const MAX_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(not(windows))]
 const MAX_TIMEOUT: Duration = Duration::from_secs(2);
+
 const BULK_IN_SZ: usize = 0x80000;
 const BULK_OUT_SZ: usize = 0x80000;
+
+/// Maximum number of retries for interface claiming on Windows
+#[cfg(windows)]
+const IFACE_CLAIM_RETRIES: u32 = 3;
+/// Delay between interface claim retries on Windows
+#[cfg(windows)]
+const IFACE_CLAIM_RETRY_DELAY: Duration = Duration::from_millis(500);
 
 pub struct UsbMTKPort {
     info: DeviceInfo,
@@ -96,14 +111,38 @@ impl UsbMTKPort {
         Err(Error::io("No bulk endpoints found"))
     }
 
+    /// Build CDC line coding bytes for the given baudrate.
+    /// Format: [baud_le(4 bytes), stop_bits(1), parity(1), data_bits(1)]
+    fn build_line_coding(baudrate: u32) -> [u8; 7] {
+        let baud_bytes = baudrate.to_le_bytes();
+        [
+            baud_bytes[0],
+            baud_bytes[1],
+            baud_bytes[2],
+            baud_bytes[3],
+            0x00, // 1 stop bit
+            0x00, // No parity
+            0x08, // 8 data bits
+        ]
+    }
+
     async fn setup_cdc(&self) -> Result<()> {
         let iface = self.ctrl_interface.as_ref().ok_or(Error::io("Interface not open"))?;
 
         const CDC_INTERFACE_NUM: u16 = 0;
         const SET_LINE_CODING: u8 = 0x20;
         const SET_CONTROL_LINE_STATE: u8 = 0x22;
-        const LINE_CODING: [u8; 7] = [0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08];
         const CONTROL_LINE_STATE: u16 = 0x03; // DTR | RTS
+
+        // Use connection-type-aware baudrate for CDC line coding,
+        // matching the MTK USB CDC ACM protocol:
+        //   BROM: 115200 bps, Preloader/DA: 921600 bps
+        let baudrate = match self.connection_type {
+            ConnectionType::Brom => 115_200u32,
+            ConnectionType::Preloader | ConnectionType::Da => 921_600u32,
+        };
+        let line_coding = Self::build_line_coding(baudrate);
+        debug!("CDC Setup: baudrate={}, connection_type={:?}", baudrate, self.connection_type);
 
         iface
             .control_out(
@@ -113,7 +152,7 @@ impl UsbMTKPort {
                     request: SET_LINE_CODING,
                     value: 0,
                     index: CDC_INTERFACE_NUM,
-                    data: &LINE_CODING,
+                    data: &line_coding,
                 },
                 MAX_TIMEOUT,
             )
@@ -147,13 +186,89 @@ impl MTKPort for UsbMTKPort {
             return Ok(());
         }
 
-        let device = self.info.open().await?;
+        let device = self.info.open().await.map_err(|e| {
+            #[cfg(windows)]
+            error!(
+                "Failed to open USB device. On Windows, ensure WinUSB or libusb drivers \
+                 are installed (e.g. via Zadig or the Penumbra driver installer). \
+                 The default MediaTek serial drivers (usb2ser/MT65xx) are not compatible \
+                 with direct USB access. Error: {}",
+                e
+            );
+            #[cfg(not(windows))]
+            error!("Failed to open USB device: {}", e);
+            Error::io(format!("Failed to open USB device: {}", e))
+        })?;
+
+        // On Windows, interface claiming can be racy when the WinUSB driver
+        // has just been loaded. Retry with a delay to handle this.
+        #[cfg(windows)]
+        let (ctrl_iface, iface) = {
+            let mut last_err = None;
+            let mut result = None;
+            for attempt in 0..IFACE_CLAIM_RETRIES {
+                if attempt > 0 {
+                    debug!(
+                        "Retrying interface claim (attempt {}/{})",
+                        attempt + 1,
+                        IFACE_CLAIM_RETRIES
+                    );
+                    tokio::time::sleep(IFACE_CLAIM_RETRY_DELAY).await;
+                }
+                match device.detach_and_claim_interface(0).await {
+                    Ok(ctrl) => match device.detach_and_claim_interface(1).await {
+                        Ok(data) => {
+                            result = Some((ctrl, data));
+                            break;
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to claim data interface (attempt {}): {}",
+                                attempt + 1,
+                                e
+                            );
+                            last_err = Some(e);
+                        }
+                    },
+                    Err(e) => {
+                        warn!("Failed to claim control interface (attempt {}): {}", attempt + 1, e);
+                        last_err = Some(e);
+                    }
+                }
+            }
+            match result {
+                Some(r) => r,
+                None => {
+                    let err = last_err.unwrap();
+                    error!(
+                        "Failed to claim USB interfaces after {} attempts. \
+                         On Windows, this usually means the device is still bound to the \
+                         MediaTek serial driver (usb2ser.sys / MT65xx Preloader). \
+                         Uninstall the MediaTek driver in Device Manager, then install \
+                         WinUSB drivers using the Penumbra driver installer or Zadig. \
+                         Error: {}",
+                        IFACE_CLAIM_RETRIES, err
+                    );
+                    return Err(Error::io(format!(
+                        "Failed to claim USB interfaces: {}. \
+                         On Windows, ensure WinUSB drivers are installed \
+                         (uninstall MediaTek serial drivers first).",
+                        err
+                    )));
+                }
+            }
+        };
+
+        #[cfg(not(windows))]
         let ctrl_iface = device.detach_and_claim_interface(0).await?;
+        #[cfg(not(windows))]
         let iface = device.detach_and_claim_interface(1).await?;
 
         self.select_endpoints(&iface)?;
 
-        // Seem to be a windows bug
+        // Windows WinUSB has limitations with multiple pending transfers that
+        // can cause "Error 87" (ERROR_INVALID_PARAMETER). Use a single
+        // transfer on Windows for reliability.
         #[cfg(windows)]
         let tr = 1;
 
@@ -170,14 +285,27 @@ impl MTKPort for UsbMTKPort {
         self.interface = Some(iface);
         self.ctrl_interface = Some(ctrl_iface);
 
-        // CDC setup is needed for preloader and DA modes on all platforms
-        if self.connection_type != ConnectionType::Brom
-            && let Err(e) = self.setup_cdc().await
+        // CDC setup is needed for preloader and DA modes on all platforms.
+        // On Windows, also attempt CDC setup for BROM mode since WinUSB
+        // may need explicit line coding configuration.
+        #[cfg(windows)]
         {
-            debug!("CDC setup failed (may be ok): {:?}", e);
+            if let Err(e) = self.setup_cdc().await {
+                debug!("CDC setup failed (may be ok for BROM): {:?}", e);
+            }
+        }
+
+        #[cfg(not(windows))]
+        {
+            if self.connection_type != ConnectionType::Brom
+                && let Err(e) = self.setup_cdc().await
+            {
+                debug!("CDC setup failed (may be ok): {:?}", e);
+            }
         }
 
         self.is_open = true;
+        info!("USB device opened successfully: {}", self.get_port_name());
 
         Ok(())
     }
@@ -273,6 +401,12 @@ impl MTKPort for UsbMTKPort {
                 .iter()
                 .find(|(vid, pid, _)| device.vendor_id() == *vid && device.product_id() == *pid)
             {
+                info!(
+                    "Found MTK device: {:04X}:{:04X} ({:?})",
+                    device.vendor_id(),
+                    device.product_id(),
+                    conn_type
+                );
                 return Ok(Some(UsbMTKPort::new(device, *conn_type)));
             }
         }

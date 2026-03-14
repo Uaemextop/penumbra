@@ -1,0 +1,184 @@
+;
+; penumbra_mtk_winusb.inf
+;
+; WinUSB driver INF for MediaTek Preloader / BROM / DA USB devices.
+; This INF maps MediaTek USB hardware IDs to the Windows inbox WinUSB
+; driver, enabling direct USB access from user-mode applications like
+; Penumbra (via nusb/libusb) without requiring Zadig or UsbDk.
+;
+; This eliminates the need for:
+;   - Zadig (manual WinUSB replacement)
+;   - UsbDk (filter driver used by mtkclient/libusb)
+;   - LibUSB-win32 filter drivers
+;
+; How it works:
+;   The standard MediaTek serial driver (usb2ser.sys / MT65xx) claims
+;   MTK devices as COM ports, which blocks direct USB access. This INF
+;   instead binds WinUSB.sys to the device, allowing nusb/libusb to
+;   communicate directly via bulk and control transfers.
+;
+; Compatibility:
+;   - Penumbra (Rust, via nusb)  -- direct USB bulk transfers
+;   - mtkclient (Python, via pyusb/libusb) -- when libusb uses WinUSB backend
+;   - Any tool using WinUSB or libusb APIs
+;
+; Based on hardware IDs from the open-source MTK driver analysis.
+; See: github.com/Uaemextop/mtk-loader-drivers-opensource-win11
+;
+; Copyright (c) 2026 Penumbra Project — MIT License
+;
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = USBDevice
+ClassGuid   = {88BAE032-5A81-49f0-BC3D-A4FF138216D6}
+Provider    = %ProviderName%
+DriverVer   = 03/14/2026,1.0.0.0
+CatalogFile = penumbra_mtk_winusb.cat
+PnpLockdown = 1
+
+[ClassInstall32]
+AddReg = WinUSBDeviceClassReg
+
+[WinUSBDeviceClassReg]
+HKR,,,0,"Universal Serial Bus devices"
+HKR,,Icon,,-20
+
+[Manufacturer]
+%ProviderName% = DeviceList, NTamd64, NTx86
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+; ==========================================================================
+;  x64 Device List
+; ==========================================================================
+[DeviceList.NTamd64]
+
+; ---- Core Preloader / BROM / DA ----
+%MTK_BOOTROM%     = WinUSB_Install, USB\VID_0E8D&PID_0003
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_2000
+%MTK_DA%          = WinUSB_Install, USB\VID_0E8D&PID_2001
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_20FF
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_3000
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_6000
+
+; ---- VCOM (Meta Mode) ----
+%MTK_VCOM%        = WinUSB_Install, USB\VID_0E8D&PID_2006
+%MTK_VCOM%        = WinUSB_Install, USB\VID_0E8D&PID_2007
+
+; ---- Third-party vendors using MTK chipsets ----
+%LG_PRELOADER%    = WinUSB_Install, USB\VID_1004&PID_6000
+%OPPO_PRELOADER%  = WinUSB_Install, USB\VID_22D9&PID_0006
+%SONY_BROM%       = WinUSB_Install, USB\VID_0FCE&PID_F200
+%SONY_BROM_XA1%   = WinUSB_Install, USB\VID_0FCE&PID_D1E9
+%SONY_BROM2%      = WinUSB_Install, USB\VID_0FCE&PID_D1E2
+%SONY_BROM_L1%    = WinUSB_Install, USB\VID_0FCE&PID_D1EC
+%SONY_BROM_F3111% = WinUSB_Install, USB\VID_0FCE&PID_D1DD
+
+; ==========================================================================
+;  x86 Device List (identical hardware IDs)
+; ==========================================================================
+[DeviceList.NTx86]
+
+; ---- Core Preloader / BROM / DA ----
+%MTK_BOOTROM%     = WinUSB_Install, USB\VID_0E8D&PID_0003
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_2000
+%MTK_DA%          = WinUSB_Install, USB\VID_0E8D&PID_2001
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_20FF
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_3000
+%MTK_PRELOADER%   = WinUSB_Install, USB\VID_0E8D&PID_6000
+
+; ---- VCOM (Meta Mode) ----
+%MTK_VCOM%        = WinUSB_Install, USB\VID_0E8D&PID_2006
+%MTK_VCOM%        = WinUSB_Install, USB\VID_0E8D&PID_2007
+
+; ---- Third-party vendors using MTK chipsets ----
+%LG_PRELOADER%    = WinUSB_Install, USB\VID_1004&PID_6000
+%OPPO_PRELOADER%  = WinUSB_Install, USB\VID_22D9&PID_0006
+%SONY_BROM%       = WinUSB_Install, USB\VID_0FCE&PID_F200
+%SONY_BROM_XA1%   = WinUSB_Install, USB\VID_0FCE&PID_D1E9
+%SONY_BROM2%      = WinUSB_Install, USB\VID_0FCE&PID_D1E2
+%SONY_BROM_L1%    = WinUSB_Install, USB\VID_0FCE&PID_D1EC
+%SONY_BROM_F3111% = WinUSB_Install, USB\VID_0FCE&PID_D1DD
+
+; ==========================================================================
+;  WinUSB Install Section
+; ==========================================================================
+[WinUSB_Install.NT]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[WinUSB_Install.NTamd64]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[WinUSB_Install.NTx86]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+; ==========================================================================
+;  Services
+; ==========================================================================
+[WinUSB_Install.NT.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[WinUSB_Install.NTamd64.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[WinUSB_Install.NTx86.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+; ==========================================================================
+;  Hardware — set the WinUSB device interface GUID
+;  This GUID is used by nusb/libusb to find the device.
+; ==========================================================================
+[WinUSB_Install.NT.HW]
+AddReg = WinUSB_AddReg
+
+[WinUSB_Install.NTamd64.HW]
+AddReg = WinUSB_AddReg
+
+[WinUSB_Install.NTx86.HW]
+AddReg = WinUSB_AddReg
+
+[WinUSB_AddReg]
+; DeviceInterfaceGUID for WinUSB access
+HKR,,DeviceInterfaceGUIDs,0x10000,"{A5DCBF10-6530-11D2-901F-00C04FB951ED}"
+; Allow non-admin access to the device
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GRGWGX;;;BA)(A;;GRGWGX;;;WD)(A;;GRGWGX;;;RC)"
+
+; ==========================================================================
+;  Co-Installers (WinUSB)
+; ==========================================================================
+[WinUSB_Install.NT.CoInstallers]
+AddReg = CoInstallers_AddReg
+
+[WinUSB_Install.NTamd64.CoInstallers]
+AddReg = CoInstallers_AddReg
+
+[WinUSB_Install.NTx86.CoInstallers]
+AddReg = CoInstallers_AddReg
+
+[CoInstallers_AddReg]
+; No additional co-installers needed — WinUSB is inbox on Windows 10+
+
+; ==========================================================================
+;  Strings
+; ==========================================================================
+[Strings]
+ProviderName      = "Penumbra — MTK WinUSB Driver"
+MTK_BOOTROM       = "MediaTek USB Port (BROM)"
+MTK_PRELOADER     = "MediaTek USB Port (Preloader)"
+MTK_DA            = "MediaTek USB Port (DA)"
+MTK_VCOM          = "MediaTek USB VCOM Port"
+LG_PRELOADER      = "LG USB Port (Preloader)"
+OPPO_PRELOADER    = "OPPO USB Port (Preloader)"
+SONY_BROM         = "Sony USB Port (BROM)"
+SONY_BROM_XA1     = "Sony USB Port (BROM XA1)"
+SONY_BROM2        = "Sony USB Port (BROM)"
+SONY_BROM_L1      = "Sony USB Port (BROM L1)"
+SONY_BROM_F3111   = "Sony USB Port (BROM F3111)"

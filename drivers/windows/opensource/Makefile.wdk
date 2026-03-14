@@ -1,0 +1,39 @@
+#
+# Makefile.wdk
+#
+# Alternative build file for MediaTek USB CDC ACM KMDF driver.
+# Use with MSBuild from a WDK command prompt:
+#
+#   msbuild mtk_usb2ser.vcxproj /p:Configuration=Release /p:Platform=x64
+#
+# Or use this Makefile with nmake from a WDK build environment:
+#
+#   nmake /f Makefile.wdk
+#
+
+TARGETNAME = mtk_usb2ser
+TARGETTYPE = DRIVER
+KMDF_VERSION_MAJOR = 1
+KMDF_VERSION_MINOR = 33
+
+SOURCES = \
+    driver.c        \
+    device.c        \
+    queue.c         \
+    serial.c        \
+    usbtransfer.c   \
+    usbcontrol.c    \
+    power.c         \
+    wmi.c
+
+INCLUDES = $(DDK_INC_PATH);$(PROJECT_ROOT)\inc
+
+TARGETLIBS = \
+    $(DDK_LIB_PATH)\ntstrsafe.lib \
+    $(DDK_LIB_PATH)\usbd.lib
+
+INF_NAME = mtk_usb2ser
+
+C_DEFINES = $(C_DEFINES) -D_KERNEL_MODE -DKMDF_VERSION_MAJOR=1 -DKMDF_VERSION_MINOR=33
+
+MSC_WARNING_LEVEL = /W4 /WX

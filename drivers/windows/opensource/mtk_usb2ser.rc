@@ -1,0 +1,45 @@
+/*
+ * mtk_usb2ser.rc
+ *
+ * Resource script for the MediaTek USB CDC ACM to Serial Port KMDF driver.
+ * Embeds VERSIONINFO into the compiled .sys binary so Windows can display
+ * the file version, company name, and copyright in Device Manager.
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <windows.h>
+#include "version.h"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION     VER_FILEVERSION
+    PRODUCTVERSION  VER_PRODUCTVERSION
+    FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+#ifdef DBG
+    FILEFLAGS       VS_FF_DEBUG
+#else
+    FILEFLAGS       0
+#endif
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_DRV
+    FILESUBTYPE     VFT2_DRV_SYSTEM
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"        /* US English, Unicode */
+        BEGIN
+            VALUE "CompanyName",      VER_COMPANYNAME_STR
+            VALUE "FileDescription",  VER_FILEDESCRIPTION_STR
+            VALUE "FileVersion",      VER_FILEVERSION_STR
+            VALUE "InternalName",     VER_INTERNALNAME_STR
+            VALUE "LegalCopyright",   VER_LEGALCOPYRIGHT_STR
+            VALUE "OriginalFilename", VER_ORIGINALFILENAME_STR
+            VALUE "ProductName",      VER_PRODUCTNAME_STR
+            VALUE "ProductVersion",   VER_PRODUCTVERSION_STR
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0   /* US English, Unicode */
+    END
+END
