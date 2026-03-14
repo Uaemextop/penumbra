@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
+    <TemplateGuid>{dd38f7fc-d7a0-45f2-96bb-967e5d796738}</TemplateGuid>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <Configuration>Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <RootNamespace>mtk_usb2ser</RootNamespace>
+    <DriverType>KMDF</DriverType>
+    <KMDF_VERSION_MAJOR>1</KMDF_VERSION_MAJOR>
+    <KMDF_VERSION_MINOR>33</KMDF_VERSION_MINOR>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- Debug|x64 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <TargetVersion>Windows10</TargetVersion>
+  </PropertyGroup>
+
+  <!-- Release|x64 -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <TargetVersion>Windows10</TargetVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <!-- Output directories -->
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\obj\</IntDir>
+    <TargetName>mtk_usb2ser</TargetName>
+  </PropertyGroup>
+
+  <!-- Common compiler settings for all configurations -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>KMDF_VERSION_MAJOR=1;KMDF_VERSION_MINOR=33;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WppEnabled>false</WppEnabled>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Inf>
+      <SpecifyArchitecture>true</SpecifyArchitecture>
+    </Inf>
+  </ItemDefinitionGroup>
+
+  <!-- Debug-specific settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>DBG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Release-specific settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Source files -->
+  <ItemGroup>
+    <ClCompile Include="driver.c" />
+    <ClCompile Include="device.c" />
+    <ClCompile Include="queue.c" />
+    <ClCompile Include="serial.c" />
+    <ClCompile Include="usbtransfer.c" />
+    <ClCompile Include="usbcontrol.c" />
+    <ClCompile Include="power.c" />
+    <ClCompile Include="wmi.c" />
+  </ItemGroup>
+
+  <!-- Header files -->
+  <ItemGroup>
+    <ClInclude Include="mtk_usb2ser.h" />
+    <ClInclude Include="version.h" />
+  </ItemGroup>
+
+  <!-- Resource file (VERSIONINFO embedded in .sys) -->
+  <ItemGroup>
+    <ResourceCompile Include="mtk_usb2ser.rc" />
+  </ItemGroup>
+
+  <!-- INF file -->
+  <ItemGroup>
+    <Inf Include="mtk_usb2ser.inf" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+  <!-- Override InfVerif target — InfVerif.dll requires the WDK Visual Studio
+       extension (VSIX) which is not available on CI runners. InfVerif is a
+       validation tool, not required for driver compilation. Developers can
+       run infverif.exe from the WDK bin directory manually to validate the INF.
+       IMPORTANT: BeforeTargets and DependsOnTargets must be preserved from the
+       original WDK InfVerif target to maintain the StampInf → InfVerif → ClCompile
+       chain. Without these, StampInf never runs and DriverPackageTarget fails
+       with MSB3030 because the stamped INF is never created. -->
+  <Target Name="InfVerif" BeforeTargets="ClCompile" DependsOnTargets="StampInf" />
+
+  <!-- Override TestSign target — WDK 10.0.26100's built-in TestSign calls
+       signtool without the required /fd digest algorithm flag, causing
+       "SignTool error: No file digest algorithm specified". The CI workflow
+       has a dedicated signing step with proper /fd SHA256 and timestamp.
+       NOTE: Do NOT use <SignMode>Off</SignMode> as it suppresses StampInf
+       and the entire driver post-processing pipeline (MSB3030). -->
+  <Target Name="TestSign" />
+
+  <!-- Override Inf2Cat target — The WDK DriverPackageTarget copies the
+       stamped INF into a package subdirectory but does not always copy the
+       .sys file alongside it. inf2cat.exe then fails with error -2 because
+       it cannot find the binary referenced in CopyFiles / SourceDisksFiles.
+       The CI workflow handles catalog generation in its own "Sign driver"
+       step, which correctly assembles all files before invoking Inf2Cat. -->
+  <Target Name="Inf2Cat" />
+
+  <!-- Override DriverPackageTarget — When building the vcxproj directly
+       (not from a solution), this target outputs empty Configuration/Platform
+       metadata and creates a package subdirectory without the .sys binary,
+       which confuses inf2cat during the CI signing step. The CI workflow
+       assembles the final driver package in its dedicated signing step. -->
+  <Target Name="DriverPackageTarget" />
+
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
