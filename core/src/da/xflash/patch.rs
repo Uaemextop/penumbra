@@ -6,13 +6,13 @@
 const EXT_LOADER: &[u8] = include_bytes!("../../../payloads/extloader_v5.bin");
 
 use log::{info, warn};
-use sha2::{Digest, Sha256};
 
 use crate::da::xflash::XFlash;
 use crate::da::{DA, DAEntryRegion};
 use crate::error::Result;
 use crate::utilities::analysis::{ArchAnalyzer, Thumb2Analyzer};
 use crate::utilities::arm::*;
+use crate::utilities::hash::hash;
 use crate::utilities::patching::*;
 
 /// Patches both DA1 and DA2, specific for V5 DA
@@ -23,9 +23,9 @@ pub fn patch_da(xflash: &mut XFlash) -> Result<DA> {
     let hash_pos = xflash.da.find_da_hash_offset();
     match hash_pos {
         Some(pos) => {
-            let mut hasher = Sha256::new();
-            hasher.update(&da2.data[..da2.data.len().saturating_sub(da2.sig_len as usize)]);
-            let hash_result = hasher.finalize();
+            let hash_type = xflash.da.get_hash_type();
+            let hash_result =
+                hash(hash_type, &da2.data[..da2.data.len().saturating_sub(da2.sig_len as usize)]);
             patch(&mut da1.data, pos, &bytes_to_hex(&hash_result))?;
 
             let original_da = &xflash.da;
