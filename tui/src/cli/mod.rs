@@ -62,6 +62,7 @@ mtk_commands! {
     Pgpt(PgptArgs),
     Peek(PeekArgs),
     Poke(PokeArgs),
+    Rpmb(RpmbArgs),
     Shutdown(ShutdownArgs),
     Reboot(RebootArgs),
     XFlash(XFlashArgs),
