@@ -305,6 +305,17 @@ impl DAProtocol for Xml {
     }
 
     #[cfg(not(feature = "no_exploits"))]
+    async fn poke(
+        &mut self,
+        addr: u32,
+        length: usize,
+        reader: &mut (dyn AsyncRead + Unpin + Send),
+        progress: &mut (dyn FnMut(usize, usize) + Send),
+    ) -> Result<()> {
+        exts::poke(self, addr, length, reader, progress).await
+    }
+
+    #[cfg(not(feature = "no_exploits"))]
     fn patch_da(&mut self) -> Option<DA> {
         patch::patch_da(self).ok()
     }

@@ -169,6 +169,50 @@ pub async fn write32_ext(xflash: &mut XFlash, addr: u32, value: u32) -> Result<(
     Ok(())
 }
 
+pub async fn peek<F>(
+    xflash: &mut XFlash,
+    addr: u32,
+    length: usize,
+    writer: &mut (dyn AsyncWrite + Unpin + Send),
+    mut progress: F,
+) -> Result<()>
+where
+    F: FnMut(usize, usize) + Send,
+{
+    let mut range = [0u8; 16];
+    range[0..8].copy_from_slice(&(addr as u64).to_le_bytes());
+    range[8..16].copy_from_slice(&(length as u64).to_le_bytes());
+
+    xflash.devctrl(Cmd::ExtReadMem, Some(&[&range])).await?;
+    xflash.upload_data(length, writer, &mut progress).await?;
+
+    status_ok!(xflash);
+
+    Ok(())
+}
+
+pub async fn poke<F>(
+    xflash: &mut XFlash,
+    addr: u32,
+    length: usize,
+    reader: &mut (dyn AsyncRead + Unpin + Send),
+    mut progress: F,
+) -> Result<()>
+where
+    F: FnMut(usize, usize) + Send,
+{
+    let mut range = [0u8; 16];
+    range[0..8].copy_from_slice(&(addr as u64).to_le_bytes());
+    range[8..16].copy_from_slice(&(length as u64).to_le_bytes());
+
+    xflash.devctrl(Cmd::ExtWriteMem, Some(&[&range])).await?;
+    xflash.download_data(length, reader, &mut progress).await?;
+
+    status_ok!(xflash);
+
+    Ok(())
+}
+
 pub async fn sej(
     xflash: &mut XFlash,
     data: &[u8],

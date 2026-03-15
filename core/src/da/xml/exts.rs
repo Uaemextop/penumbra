@@ -47,13 +47,13 @@ pub struct ExtReadMem {
     length: usize,
 }
 
-/*
 #[derive(XmlCommand)]
 pub struct ExtWriteMem {
     #[xml(tag = "address", fmt = "0x{address:X}")]
     address: u32,
     #[xml(tag = "length", fmt = "0x{length:X}")]
-    length: u32,
+    length: usize,
+}
 }
 */
 
@@ -194,6 +194,44 @@ fn prepare_extensions(xml: &Xml) -> Option<Vec<u8>> {
     patch_pattern_str(&mut da_ext_data, "00200011", &bytes_to_hex(&uart_base.to_le_bytes()))?;
 
     Some(da_ext_data)
+}
+
+pub async fn peek<F>(
+    xml: &mut Xml,
+    addr: u32,
+    length: usize,
+    writer: &mut (dyn AsyncWrite + Unpin + Send),
+    mut progress: F,
+) -> Result<()>
+where
+    F: FnMut(usize, usize) + Send,
+{
+    xmlcmd!(xml, ExtReadMem, addr, length)?;
+
+    xml.upload_file(writer, &mut progress).await?;
+
+    xml.lifetime_ack(XmlCmdLifetime::CmdEnd).await?;
+
+    Ok(())
+}
+
+pub async fn poke<F>(
+    xml: &mut Xml,
+    addr: u32,
+    length: usize,
+    reader: &mut (dyn AsyncRead + Unpin + Send),
+    mut progress: F,
+) -> Result<()>
+where
+    F: FnMut(usize, usize) + Send,
+{
+    xmlcmd!(xml, ExtWriteMem, addr, length)?;
+
+    xml.download_file(length, reader, &mut progress).await?;
+
+    xml.lifetime_ack(XmlCmdLifetime::CmdEnd).await?;
+
+    Ok(())
 }
 
 pub async fn sej(

@@ -17,7 +17,12 @@ use crate::core::storage::{Gpt, Partition, PartitionKind, Storage, StorageType};
 use crate::da::protocol::BootMode;
 use crate::da::xflash::cmds::*;
 #[cfg(not(feature = "no_exploits"))]
-use crate::da::xflash::exts::{read32_ext, write32_ext};
+use crate::da::xflash::exts::{
+    peek,
+    poke,
+    read32_ext,
+    write32_ext,
+};
 use crate::da::xflash::flash;
 #[cfg(not(feature = "no_exploits"))]
 use crate::da::xflash::patch;
@@ -390,10 +395,33 @@ impl DAProtocol for XFlash {
     #[cfg(not(feature = "no_exploits"))]
     async fn peek(
         &mut self,
-        _addr: u32,
-        _length: usize,
-        _writer: &mut (dyn AsyncWrite + Unpin + Send),
-        _progress: &mut (dyn FnMut(usize, usize) + Send),
+        addr: u32,
+        length: usize,
+        writer: &mut (dyn AsyncWrite + Unpin + Send),
+        progress: &mut (dyn FnMut(usize, usize) + Send),
+    ) -> Result<()> {
+        peek(self, addr, length, writer, progress).await
+    }
+
+    #[cfg(not(feature = "no_exploits"))]
+    async fn poke(
+        &mut self,
+        addr: u32,
+        length: usize,
+        reader: &mut (dyn AsyncRead + Unpin + Send),
+        progress: &mut (dyn FnMut(usize, usize) + Send),
+    ) -> Result<()> {
+        poke(self, addr, length, reader, progress).await
+    }
+
+    #[cfg(not(feature = "no_exploits"))]
+    async fn read_rpmb(
+        &mut self,
+        region: RpmbRegion,
+        start_sector: u32,
+        sectors_count: u32,
+        writer: &mut (dyn AsyncWrite + Unpin + Send),
+        progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<()> {
         // TODO: Rewrite V5 extensions, this is currently broken with current extensions
         todo!()

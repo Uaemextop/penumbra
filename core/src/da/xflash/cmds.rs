@@ -98,18 +98,16 @@ pub enum Cmd {
 
     // Extensions
     ExtAck = 0x0F0000,
-    ExtReadMem = 0x0F0001,
-    ExtReadRegister = 0x0F0002,
+    ExtSetupDaCtx = 0x0F0001,
+    ExtReadMem = 0x0F0002,
     ExtWriteMem = 0x0F0003,
-    ExtWriteRegister = 0x0F0004,
-    ExtSetStorage = 0x0F0005,
-    ExtSetRpmbKey = 0x0F0006,
-    ExtProgRpmbKey = 0x0F0007,
-    ExtInitRpmb = 0x0F0008,
-    ExtReadRpmb = 0x0F0009,
-    ExtWriteRpmb = 0x0F000A,
-    ExtSej = 0x0F000B,
-    ExtSetupDaCtx = 0x0F000C,
+    ExtReadRegister = 0x0F0004,
+    ExtWriteRegister = 0x0F0005,
+    ExtKeyDerive = 0x0F0006,
+    ExtSej = 0x0F0007,
+    ExtRpmbInit = 0x0F0008,
+    ExtRpmbRead = 0x0F0009,
+    ExtRpmbWrite = 0x0F000A,
 }
 
 #[repr(u32)]
