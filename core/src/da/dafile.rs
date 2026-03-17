@@ -273,9 +273,16 @@ impl DA {
             return HashType::Unknown;
         };
 
+        let data = &self.get_da1().unwrap().data[offset..];
+
         // MD5 length = 16 bytes, SHA1 length = 20 bytes, SHA256 length = 32 bytes
-        let hash_data = &self.get_da1().unwrap().data[offset..];
-        let hash_len = hash_data.iter().position(|&b| b == 0).unwrap_or(hash_data.len());
+        // Since even the shortest hash is 16 bytes, we start scanning after that point
+        // and look for a delimiter (8 consecutive null bytes) to determine where the hash ends.
+        let hash_len = data[16..]
+        .windows(8)
+        .position(|w| w.iter().all(|&b| b == 0))
+        .map(|pos| pos + 16)
+        .unwrap_or(data.len());
 
         match hash_len {
             16 => HashType::Md5,
