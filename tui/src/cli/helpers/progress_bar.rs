@@ -19,7 +19,7 @@ impl AntumbraProgress {
         pb.set_style(
             ProgressStyle::with_template(
                 &format!(
-                     "{}  [{{bar:40.white/red}}] {{bytes}}/{{total_bytes}} ({{elapsed}} / ETA: {{eta}}, {{bytes_per_sec}}) {{msg}}",
+                     "{}  [{{bar:40.magenta/red}}] {{bytes}}/{{total_bytes}} ({{elapsed}} / ETA: {{eta}}, {{bytes_per_sec}}) {{msg}}",
                      prefix
                  )
             )
