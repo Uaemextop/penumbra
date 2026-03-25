@@ -136,17 +136,9 @@ impl UsbMTKPort {
 
         let handle = tokio::task::block_in_place(|| device.open().ok())?;
 
-        let (in_endpoint, _, out_endpoint, _) =
-            Self::find_bulk_endpoints(&device)?;
+        let (in_endpoint, _, out_endpoint, _) = Self::find_bulk_endpoints(&device)?;
 
-        Some(Self::new(
-            handle,
-            connection_type,
-            port_name,
-            baudrate,
-            in_endpoint,
-            out_endpoint,
-        ))
+        Some(Self::new(handle, connection_type, port_name, baudrate, in_endpoint, out_endpoint))
     }
 }
 
@@ -377,9 +369,10 @@ impl MTKPort for UsbMTKPort {
             let pid = descriptor.product_id();
 
             if KNOWN_PORTS.iter().any(|(kvid, kpid, _)| *kvid == vid && *kpid == pid)
-                && let Some(port) = UsbMTKPort::from_device(device) {
-                    return Ok(Some(port));
-                }
+                && let Some(port) = UsbMTKPort::from_device(device)
+            {
+                return Ok(Some(port));
+            }
         }
 
         Ok(None)

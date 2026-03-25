@@ -9,11 +9,10 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Row, Table};
 
-use crate::app::AppCtx;
-use crate::components::{Stars, ThemedWidgetMut, ThemedWidgetRef};
-
 use super::DevicePage;
 use super::events::DeviceStatus;
+use crate::app::AppCtx;
+use crate::components::{Stars, ThemedWidgetMut, ThemedWidgetRef};
 
 /// All rendering methods for [`DevicePage`].
 impl DevicePage {

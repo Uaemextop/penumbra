@@ -4,11 +4,10 @@
 */
 use tokio::io::{AsyncRead, AsyncWrite};
 
+use super::Device;
 use crate::core::storage::PartitionKind;
 use crate::da::protocol::BootMode;
 use crate::error::{Error, Result};
-
-use super::Device;
 
 /// Flash and transfer operations for the [`Device`].
 ///

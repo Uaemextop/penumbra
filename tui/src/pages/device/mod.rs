@@ -24,20 +24,30 @@ use tokio::sync::{Mutex, mpsc};
 use tokio::task::JoinHandle;
 use tokio::time::{Duration, sleep};
 
+use self::callbacks::{
+    LockBootloaderCallback,
+    ReadPartitionCallback,
+    UnlockBootloaderCallback,
+    WritePartitionCallback,
+};
+use self::events::{
+    CallbackEvent,
+    DeviceAction,
+    DeviceActionCallback,
+    DeviceEvent,
+    DeviceState,
+    DeviceStatus,
+    FocusedPanel,
+};
 use crate::app::{AppCtx, AppPage};
 use crate::components::selectable_list::{
-    ListItemEntry, ListItemEntryBuilder, SelectableList, SelectableListBuilder,
+    ListItemEntry,
+    ListItemEntryBuilder,
+    SelectableList,
+    SelectableListBuilder,
 };
 use crate::components::{ExplorerResult, FileExplorer, ProgressBar, Stars};
 use crate::pages::Page;
-
-use self::callbacks::{
-    LockBootloaderCallback, ReadPartitionCallback, UnlockBootloaderCallback, WritePartitionCallback,
-};
-use self::events::{
-    CallbackEvent, DeviceAction, DeviceActionCallback, DeviceEvent, DeviceState, DeviceStatus,
-    FocusedPanel,
-};
 
 pub struct DevicePage {
     pub device: Option<Arc<Mutex<Device>>>,

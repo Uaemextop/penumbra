@@ -193,13 +193,17 @@ impl Gpt {
         let sector_sizes = [512, 1024, 2048, 4096, 8192];
 
         for &sector_size in &sector_sizes {
-            if end >= sector_size + 8 && &data[end - sector_size..end - sector_size + 8] == EFI_PART_SIGNATURE {
+            if end >= sector_size + 8
+                && &data[end - sector_size..end - sector_size + 8] == EFI_PART_SIGNATURE
+            {
                 return Some((GptType::Sgpt, end - sector_size));
             }
         }
 
         for &sector_size in &sector_sizes {
-            if data.len() >= sector_size + 8 && &data[sector_size..sector_size + 8] == EFI_PART_SIGNATURE {
+            if data.len() >= sector_size + 8
+                && &data[sector_size..sector_size + 8] == EFI_PART_SIGNATURE
+            {
                 return Some((GptType::Pgpt, sector_size));
             }
         }

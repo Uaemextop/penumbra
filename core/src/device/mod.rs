@@ -9,6 +9,7 @@ mod flash_ops;
 
 use std::time::Duration;
 
+pub use builder::DeviceBuilder;
 use log::{error, info, warn};
 use tokio::time::timeout;
 
@@ -21,8 +22,6 @@ use crate::core::log_buffer::DeviceLog;
 use crate::core::storage::Partition;
 use crate::da::{DAFile, DAProtocol, DAType, XFlash, Xml};
 use crate::error::{Error, Result};
-
-pub use builder::DeviceBuilder;
 
 /// Represents a connected MTK device.
 ///

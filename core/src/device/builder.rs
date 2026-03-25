@@ -2,12 +2,11 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025 Shomy
 */
+use super::Device;
 use crate::connection::Connection;
 use crate::core::devinfo::DeviceInfo;
 use crate::core::log_buffer::DeviceLog;
 use crate::error::{Error, Result};
-
-use super::Device;
 
 /// A builder for creating a new [`Device`].
 ///

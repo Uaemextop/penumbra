@@ -16,9 +16,8 @@ use tokio::io::{BufReader, BufWriter};
 use tokio::spawn;
 use tokio::sync::{Mutex, mpsc};
 
-use crate::components::{ExplorerResult, FileExplorer};
-
 use super::events::{CallbackEvent, DeviceActionCallback, DeviceEvent, DeviceStatus, FocusedPanel};
+use crate::components::{ExplorerResult, FileExplorer};
 
 pub struct UnlockBootloaderCallback;
 #[async_trait]

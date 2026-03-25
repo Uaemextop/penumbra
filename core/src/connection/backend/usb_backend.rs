@@ -19,11 +19,8 @@ use crate::connection::ConnectionType;
 use crate::connection::port::KNOWN_PORTS;
 use crate::error::{Error, Result};
 
-const MAX_TIMEOUT: Duration = if cfg!(windows) {
-    Duration::from_secs(5)
-} else {
-    Duration::from_secs(2)
-};
+const MAX_TIMEOUT: Duration =
+    if cfg!(windows) { Duration::from_secs(5) } else { Duration::from_secs(2) };
 const BULK_IN_SZ: usize = 0x80000;
 const BULK_OUT_SZ: usize = 0x80000;
 
@@ -165,6 +162,26 @@ impl UsbMTKPort {
             (None, _) => Err(Error::io("Missing CDC control interface")),
             (_, None) => Err(Error::io("Missing CDC bulk/data interface")),
         }
+    }
+}
+
+/// Parses the USB control type from a raw request_type byte.
+fn parse_control_type(request_type: u8) -> ControlType {
+    match (request_type >> 5) & 0b11 {
+        0 => ControlType::Standard,
+        1 => ControlType::Class,
+        2 => ControlType::Vendor,
+        _ => ControlType::Standard,
+    }
+}
+
+/// Parses the USB recipient from a raw request_type byte.
+fn parse_recipient(request_type: u8) -> Recipient {
+    match request_type & 0b11111 {
+        0 => Recipient::Device,
+        1 => Recipient::Interface,
+        2 => Recipient::Endpoint,
+        _ => Recipient::Other,
     }
 }
 
@@ -326,19 +343,8 @@ impl MTKPort for UsbMTKPort {
         let iface =
             self.ctrl_interface.as_ref().ok_or_else(|| Error::io("USB port is not open"))?;
 
-        let control_type = match (request_type >> 5) & 0b11 {
-            0 => ControlType::Standard,
-            1 => ControlType::Class,
-            2 => ControlType::Vendor,
-            _ => ControlType::Standard,
-        };
-
-        let recipient = match request_type & 0b11111 {
-            0 => Recipient::Device,
-            1 => Recipient::Interface,
-            2 => Recipient::Endpoint,
-            _ => Recipient::Other,
-        };
+        let control_type = parse_control_type(request_type);
+        let recipient = parse_recipient(request_type);
 
         iface
             .control_out(
@@ -362,19 +368,8 @@ impl MTKPort for UsbMTKPort {
         let iface =
             self.ctrl_interface.as_ref().ok_or_else(|| Error::io("USB port is not open"))?;
 
-        let control_type = match (request_type >> 5) & 0b11 {
-            0 => ControlType::Standard,
-            1 => ControlType::Class,
-            2 => ControlType::Vendor,
-            _ => ControlType::Standard,
-        };
-
-        let recipient = match request_type & 0b11111 {
-            0 => Recipient::Device,
-            1 => Recipient::Interface,
-            2 => Recipient::Endpoint,
-            _ => Recipient::Other,
-        };
+        let control_type = parse_control_type(request_type);
+        let recipient = parse_recipient(request_type);
 
         let buf = iface
             .control_in(

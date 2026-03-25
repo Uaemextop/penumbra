@@ -104,8 +104,8 @@ impl ThemedWidgetMut for DescriptionMenu {
         let avail = (area.height.saturating_sub(2)) as usize;
         self.set_max_visible(avail);
 
-        let desc_width =
-            (area.width.saturating_sub(MENU_WIDTH + DESC_PAD)).clamp(DESC_MIN_WIDTH, DESC_MAX_WIDTH);
+        let desc_width = (area.width.saturating_sub(MENU_WIDTH + DESC_PAD))
+            .clamp(DESC_MIN_WIDTH, DESC_MAX_WIDTH);
 
         let n_shown = self.max_visible.min(self.items.len());
         let menu_height = n_shown as u16 * Y_SPACING;

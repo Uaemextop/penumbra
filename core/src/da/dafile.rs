@@ -287,10 +287,10 @@ impl DA {
         // Since even the shortest hash is 16 bytes, we start scanning after that point
         // and look for a delimiter (8 consecutive null bytes) to determine where the hash ends.
         let hash_len = data[16..]
-        .windows(8)
-        .position(|w| w.iter().all(|&b| b == 0))
-        .map(|pos| pos + 16)
-        .unwrap_or(data.len());
+            .windows(8)
+            .position(|w| w.iter().all(|&b| b == 0))
+            .map(|pos| pos + 16)
+            .unwrap_or(data.len());
 
         match hash_len {
             16 => HashType::Md5,
