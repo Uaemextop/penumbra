@@ -13,7 +13,7 @@ use log::{error, info, warn};
 use tokio::time::timeout;
 
 use crate::connection::Connection;
-use crate::connection::port::{ConnectionType, MTKPort};
+use crate::connection::port::ConnectionType;
 use crate::core::chip::{ChipInfo, chip_from_hw_code};
 use crate::core::crypto::config::CryptoIO;
 use crate::core::devinfo::{DevInfoData, DeviceInfo};

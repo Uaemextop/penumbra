@@ -5,8 +5,6 @@
 use crate::connection::Connection;
 use crate::core::devinfo::DeviceInfo;
 use crate::core::log_buffer::DeviceLog;
-use crate::core::storage::Partition;
-use crate::da::DAFile;
 use crate::error::{Error, Result};
 
 use super::Device;

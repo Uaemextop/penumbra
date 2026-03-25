@@ -228,6 +228,7 @@ impl MTKPort for UsbMTKPort {
                     error!("Failed to release interface {}: {:?}", iface, e);
                 }
 
+                #[cfg(not(target_os = "windows"))]
                 if let Err(e) = handle.attach_kernel_driver(iface) {
                     error!("Failed to reattach kernel driver on interface {}: {:?}", iface, e);
                 }

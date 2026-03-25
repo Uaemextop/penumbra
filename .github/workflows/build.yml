@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary: antumbra
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            binary: antumbra.exe
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary: antumbra
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary: antumbra
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
+      - name: Build (default features)
+        run: cargo build --release --target ${{ matrix.target }} -p antumbra
+
+      - name: Build (TUI features)
+        run: cargo build --release --target ${{ matrix.target }} -p antumbra --features tui
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: antumbra-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
+
+  build-drivers:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Build driver installer
+        working-directory: scripts/drivers
+        run: makensis installer.nsi
+
+      - name: Upload driver installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PenumbraDrivers-windows
+          path: scripts/drivers/PenumbraDrivers.exe

@@ -19,7 +19,11 @@ use crate::connection::ConnectionType;
 use crate::connection::port::KNOWN_PORTS;
 use crate::error::{Error, Result};
 
-const MAX_TIMEOUT: Duration = Duration::from_secs(2);
+const MAX_TIMEOUT: Duration = if cfg!(windows) {
+    Duration::from_secs(5)
+} else {
+    Duration::from_secs(2)
+};
 const BULK_IN_SZ: usize = 0x80000;
 const BULK_OUT_SZ: usize = 0x80000;
 
@@ -27,6 +31,7 @@ pub struct UsbMTKPort {
     info: DeviceInfo,
     interface: Option<Interface>,
     ctrl_interface: Option<Interface>,
+    ctrl_interface_num: u8,
     reader: Option<EndpointRead<Bulk>>,
     writer: Option<EndpointWrite<Bulk>>,
     ep_out: u8,
@@ -53,6 +58,7 @@ impl UsbMTKPort {
             info,
             interface: None,
             ctrl_interface: None,
+            ctrl_interface_num: 0,
             writer: None,
             reader: None,
             ep_out: 0,
@@ -99,7 +105,7 @@ impl UsbMTKPort {
     async fn setup_cdc(&self) -> Result<()> {
         let iface = self.ctrl_interface.as_ref().ok_or(Error::io("Interface not open"))?;
 
-        const CDC_INTERFACE_NUM: u16 = 0;
+        let ctrl_iface_num = self.ctrl_interface_num as u16;
         const SET_LINE_CODING: u8 = 0x20;
         const SET_CONTROL_LINE_STATE: u8 = 0x22;
         const LINE_CODING: [u8; 7] = [0x00, 0x00, 0x0E, 0x00, 0x00, 0x00, 0x08];
@@ -112,7 +118,7 @@ impl UsbMTKPort {
                     recipient: Recipient::Interface,
                     request: SET_LINE_CODING,
                     value: 0,
-                    index: CDC_INTERFACE_NUM,
+                    index: ctrl_iface_num,
                     data: &LINE_CODING,
                 },
                 MAX_TIMEOUT,
@@ -127,7 +133,7 @@ impl UsbMTKPort {
                     recipient: Recipient::Interface,
                     request: SET_CONTROL_LINE_STATE,
                     value: CONTROL_LINE_STATE,
-                    index: CDC_INTERFACE_NUM,
+                    index: ctrl_iface_num,
                     data: &[],
                 },
                 MAX_TIMEOUT,
@@ -176,6 +182,7 @@ impl MTKPort for UsbMTKPort {
 
         let (ctrl_num, bulk_num) = Self::find_cdc_interface_numbers(&device)?;
 
+        self.ctrl_interface_num = ctrl_num;
         self.ctrl_interface = Some(device.detach_and_claim_interface(ctrl_num).await?);
         let bulk_iface = device.detach_and_claim_interface(bulk_num).await?;
 
@@ -200,7 +207,9 @@ impl MTKPort for UsbMTKPort {
 
         self.interface = Some(bulk_iface);
 
-        if self.connection_type != ConnectionType::Brom {
+        // Windows requires CDC setup for all connection modes.
+        // On other platforms, CDC is only needed for non-BROM connections.
+        if cfg!(windows) || self.connection_type != ConnectionType::Brom {
             let _ = self.setup_cdc().await;
         }
 
