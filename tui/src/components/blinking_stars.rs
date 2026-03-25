@@ -12,8 +12,7 @@ use ratatui::style::Style;
 use crate::components::ThemedWidgetMut;
 use crate::themes::Theme;
 
-// TODO: Consider adding more stars for more whimsy vibes
-const STAR_CHARS: [char; 4] = ['✦', '✧', '·', ' '];
+const STAR_CHARS: &[char] = &['✦', '✧', '·', '⋆', '˚', '✶', ' '];
 
 #[derive(Clone)]
 struct Star {

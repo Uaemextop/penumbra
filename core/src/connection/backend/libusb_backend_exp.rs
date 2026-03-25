@@ -7,15 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use log::{debug, error, info, warn};
-use rusb::{
-    Context,
-    Device,
-    DeviceHandle,
-    Direction,
-    Recipient,
-    RequestType,
-    UsbContext,
-};
+use rusb::{Context, Device, DeviceHandle, Direction, Recipient, RequestType, UsbContext};
 use tokio::sync::Mutex;
 use tokio::task::spawn_blocking;
 use tokio::time::sleep;

@@ -95,21 +95,24 @@ impl DescriptionMenu {
 
 impl ThemedWidgetMut for DescriptionMenu {
     fn render(&mut self, area: Rect, buf: &mut Buffer, theme: &Theme) {
-        // TODO: Stop using magic values here
-        let y_spacing = 1u16;
+        const Y_SPACING: u16 = 1;
+        const MENU_WIDTH: u16 = 24;
+        const DESC_PAD: u16 = 4;
+        const DESC_MIN_WIDTH: u16 = 18;
+        const DESC_MAX_WIDTH: u16 = 36;
+
         let avail = (area.height.saturating_sub(2)) as usize;
         self.set_max_visible(avail);
 
-        let menu_width = 24u16;
-        let desc_pad = 4u16;
-        let desc_width = (area.width.saturating_sub(menu_width + desc_pad)).clamp(18, 36);
+        let desc_width = (area.width.saturating_sub(MENU_WIDTH + DESC_PAD))
+            .clamp(DESC_MIN_WIDTH, DESC_MAX_WIDTH);
 
         let n_shown = self.max_visible.min(self.items.len());
-        let menu_height = n_shown as u16 * y_spacing;
+        let menu_height = n_shown as u16 * Y_SPACING;
         let start_y = area.y + (area.height.saturating_sub(menu_height)).saturating_div(2);
 
-        let base_x = area.x + area.width / 2 - ((menu_width + desc_pad + desc_width) / 2);
-        let desc_x = base_x + menu_width + desc_pad;
+        let base_x = area.x + area.width / 2 - ((MENU_WIDTH + DESC_PAD + desc_width) / 2);
+        let desc_x = base_x + MENU_WIDTH + DESC_PAD;
 
         let items = &self.items;
         let win_start = self.scroll_offset;
@@ -119,7 +122,7 @@ impl ThemedWidgetMut for DescriptionMenu {
         for (visible_idx, i) in (win_start..win_end).enumerate() {
             let item = &items[i];
             let is_selected = i == self.selected;
-            let y = start_y + visible_idx as u16 * y_spacing;
+            let y = start_y + visible_idx as u16 * Y_SPACING;
 
             if is_selected {
                 selected_desc = Some(item.description.clone());
@@ -145,7 +148,7 @@ impl ThemedWidgetMut for DescriptionMenu {
             );
         }
         if win_end < items.len() {
-            let y = start_y + self.max_visible as u16 * y_spacing;
+            let y = start_y + self.max_visible as u16 * Y_SPACING;
             if y < area.y + area.height {
                 buf.set_string(base_x, y, "↓", Style::default().fg(theme.muted));
             }
