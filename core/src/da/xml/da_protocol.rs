@@ -202,15 +202,15 @@ impl DAProtocol for Xml {
     }
 
     async fn read32(&mut self, _addr: u32) -> Result<u32> {
-        Err(Error::penumbra("read32 is not supported in the XML protocol"))
+        todo!()
     }
 
     async fn write32(&mut self, _addr: u32, _value: u32) -> Result<()> {
-        Err(Error::penumbra("write32 is not supported in the XML protocol"))
+        todo!()
     }
 
     async fn get_usb_speed(&mut self) -> Result<u32> {
-        Err(Error::penumbra("get_usb_speed is not supported in the XML protocol"))
+        todo!()
     }
 
     fn get_connection(&mut self) -> &mut Connection {
