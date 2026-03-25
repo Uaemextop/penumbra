@@ -363,7 +363,7 @@ pub enum XFlashErrorKind {
     EfuseBlownIncorrectData = 0xC0040207,
     #[error("eFuse: Fuse is broken")]
     EfuseBroken = 0xC0040208,
-    #[error("eFuse: Eror during blow operation")]
+    #[error("eFuse: Error during blow operation")]
     EfuseBlowError = 0xC0040209,
     #[error("eFuse: Error while unlocking BPKEY")]
     EfuseUnlockBpkeyError = 0xC004020A,

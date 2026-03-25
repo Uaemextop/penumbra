@@ -463,7 +463,7 @@ impl Page for DevicePage {
 
     async fn on_exit(&mut self, _ctx: &mut AppCtx) {
         self.cancel_all_operations();
-        // TOOD: Add device shutdown if connected
+        // TODO: Add device shutdown if connected
     }
 
     async fn update(&mut self, ctx: &mut AppCtx) {

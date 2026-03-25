@@ -31,7 +31,7 @@ impl XmlError {
         match msg {
             "ERR!UNSUPPORTED" => XmlError::new("Unsupported command", XmlErrorKind::UnsupportedCmd),
             "ERR!CANCEL" => XmlError::new("Cancelled", XmlErrorKind::Cancel),
-            _ => XmlError::new(msg, XmlErrorKind::UnsupportedCmd),
+            _ => XmlError::new(msg, XmlErrorKind::Unknown),
         }
     }
 }

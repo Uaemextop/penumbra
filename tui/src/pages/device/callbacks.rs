@@ -57,7 +57,7 @@ impl DeviceActionCallback for LockBootloaderCallback {
         event_tx.send(DeviceEvent::HeaderStatus("Locking bootloader...".into())).await.ok();
 
         let mut dev = device.lock().await;
-        match dev.set_seccfg_lock_state(LockFlag::Unlock).await {
+        match dev.set_seccfg_lock_state(LockFlag::Lock).await {
             Some(_) => {
                 event_tx.send(DeviceEvent::HeaderStatus("Bootloader locked.".into())).await.ok();
                 Ok(())

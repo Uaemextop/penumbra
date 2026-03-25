@@ -183,7 +183,7 @@ impl Device {
     }
 
     /// Internal helper to ensure the device enters DA mode before performing DA operations.
-    pub(crate) async fn ensure_da_mode(&mut self) -> Result<&mut (dyn DAProtocol + Send)> {
+    async fn ensure_da_mode(&mut self) -> Result<&mut (dyn DAProtocol + Send)> {
         if !self.connected {
             return Err(Error::conn("Device is not connected. Call init() first."));
         }
