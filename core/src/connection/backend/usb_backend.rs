@@ -19,8 +19,10 @@ use crate::connection::ConnectionType;
 use crate::connection::port::KNOWN_PORTS;
 use crate::error::{Error, Result};
 
-const MAX_TIMEOUT: Duration =
-    if cfg!(windows) { Duration::from_secs(5) } else { Duration::from_secs(2) };
+#[cfg(windows)]
+const MAX_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(not(windows))]
+const MAX_TIMEOUT: Duration = Duration::from_secs(2);
 const BULK_IN_SZ: usize = 0x80000;
 const BULK_OUT_SZ: usize = 0x80000;
 

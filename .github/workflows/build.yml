@@ -70,5 +70,5 @@ jobs:
       - name: Upload driver installer
         uses: actions/upload-artifact@v4
         with:
-          name: PenumbraDrivers-windows
+          name: penumbra-drivers-windows
           path: scripts/drivers/PenumbraDrivers.exe
