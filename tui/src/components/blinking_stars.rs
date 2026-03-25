@@ -12,7 +12,7 @@ use ratatui::style::Style;
 use crate::components::ThemedWidgetMut;
 use crate::themes::Theme;
 
-const STAR_CHARS: [char; 7] = ['✦', '✧', '·', '⋆', '˚', '✶', ' '];
+const STAR_CHARS: &[char] = &['✦', '✧', '·', '⋆', '˚', '✶', ' '];
 
 #[derive(Clone)]
 struct Star {
