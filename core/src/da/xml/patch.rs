@@ -20,11 +20,11 @@ pub fn to_arch(is_arm64: bool) -> Arch {
 }
 
 pub fn patch_da(_xml: &mut Xml) -> Result<DA> {
-    todo!()
+    Err(Error::penumbra("patch_da is not yet implemented for the XML protocol"))
 }
 
 pub fn patch_da1(_xml: &mut Xml) -> Result<DAEntryRegion> {
-    todo!()
+    Err(Error::penumbra("patch_da1 is not yet implemented for the XML protocol"))
 }
 
 pub fn patch_da2(xml: &mut Xml) -> Result<DAEntryRegion> {

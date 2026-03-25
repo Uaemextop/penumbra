@@ -463,7 +463,13 @@ impl Page for DevicePage {
 
     async fn on_exit(&mut self, _ctx: &mut AppCtx) {
         self.cancel_all_operations();
-        // TODO: Add device shutdown if connected
+
+        if let Some(device) = &self.device {
+            let mut dev = device.lock().await;
+            if let Err(e) = dev.shutdown().await {
+                log::warn!("Failed to shutdown device on exit: {}", e);
+            }
+        }
     }
 
     async fn update(&mut self, ctx: &mut AppCtx) {

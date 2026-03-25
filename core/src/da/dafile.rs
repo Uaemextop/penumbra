@@ -2,11 +2,53 @@
     SPDX-License-Identifier: AGPL-3.0-or-later
     SPDX-FileCopyrightText: 2025 Shomy
 */
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
 use log::debug;
 
 use crate::error::{Error, Result};
 use crate::utilities::hash::HashType;
 use crate::{le_u16, le_u32};
+
+/// Maps hardware codes to DA codes for DA file selection.
+/// Some hardware codes don't match their DA codes directly,
+/// so this table provides the necessary translation.
+static HW_CODE_TO_DA_CODE: LazyLock<HashMap<u16, u16>> = LazyLock::new(|| {
+    HashMap::from([
+        (0x279, 0x6797),
+        (0x321, 0x6735),
+        (0x326, 0x6755),
+        (0x335, 0x6735),
+        (0x337, 0x6735),
+        (0x507, 0x6758),
+        (0x551, 0x6757),
+        (0x562, 0x6799),
+        (0x601, 0x6755),
+        (0x633, 0x6570),
+        (0x688, 0x6758),
+        (0x690, 0x6763),
+        (0x699, 0x6739),
+        (0x707, 0x6768),
+        (0x717, 0x6761),
+        (0x725, 0x6779),
+        (0x766, 0x6765),
+        (0x788, 0x6771),
+        (0x813, 0x6785),
+        (0x816, 0x6885),
+        (0x886, 0x6873),
+        (0x908, 0x8696),
+        (0x930, 0x8195),
+        (0x950, 0x6893),
+        (0x959, 0x6877),
+        (0x989, 0x6833),
+        (0x996, 0x6853),
+        (0x1066, 0x6781),
+        (0x6583, 0x6589),
+        (0x8172, 0x8173),
+        (0x8176, 0x8173),
+    ])
+});
 
 /// Protocol used by the DA
 /// - Legacy: Old DA, used in old devices
@@ -174,42 +216,8 @@ impl DAFile {
         Ok(DAFile { da_raw_data: raw_data.to_vec(), da_type, das })
     }
 
-    // TODO: Make an Hashmap, possibly also including other info about a chip
     pub fn get_da_from_hw_code(&self, hw_code: u16) -> Option<DA> {
-        let da_code = match hw_code {
-            0x279 => 0x6797,
-            0x321 => 0x6735,
-            0x326 => 0x6755,
-            0x335 => 0x6735,
-            0x337 => 0x6735,
-            0x507 => 0x6758,
-            0x551 => 0x6757,
-            0x562 => 0x6799,
-            0x601 => 0x6755,
-            0x633 => 0x6570,
-            0x688 => 0x6758,
-            0x690 => 0x6763,
-            0x699 => 0x6739,
-            0x707 => 0x6768,
-            0x717 => 0x6761,
-            0x725 => 0x6779,
-            0x766 => 0x6765,
-            0x788 => 0x6771,
-            0x813 => 0x6785,
-            0x816 => 0x6885,
-            0x886 => 0x6873,
-            0x908 => 0x8696,
-            0x930 => 0x8195,
-            0x950 => 0x6893,
-            0x959 => 0x6877,
-            0x989 => 0x6833,
-            0x996 => 0x6853,
-            0x1066 => 0x6781,
-            0x6583 => 0x6589,
-            0x8172 => 0x8173,
-            0x8176 => 0x8173,
-            _ => hw_code,
-        };
+        let da_code = HW_CODE_TO_DA_CODE.get(&hw_code).copied().unwrap_or(hw_code);
 
         // I did the clone, I'm sorry!
         self.das.iter().find(|da| da.hw_code == da_code).cloned()
